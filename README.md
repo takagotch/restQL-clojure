@@ -13,6 +13,17 @@ https://github.com/B2W-BIT/restQL-clojure
   #?(:clj (:use [slingshot.slingshot :only [try+]])
      :cljs (:use [goog.Uri :only [parse]]))))
 
+(defn without-from [[_ data]]
+  (not (contains? data :from)))
+
+(defn invalida-data-key [key]
+  (not
+    (#(:from :in :method :with :with-headers :with-body :timeout :select) key)))
+    
+(defn keyword-or-vector? [value]
+  (or
+    (keyword? value)
+    (vector? value)))
 
 
 
