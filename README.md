@@ -106,21 +106,116 @@ https://github.com/B2W-BIT/restQL-clojure
 
 (rule "Query item data must be a map. Error was in :invalid"
   [context q]
-  (let [invalids (->> q (partition 2) (filter (fn [[_ data]] (not (map? data)))))]))
+  (let [invalids (->> q (partition 2) (filter (fn [[_ data]] (not (map? data)))))]
+    (if (=0 (count invalids))
+      true
+      {:invalid (-> invalids first pr-str)})))
 
+(rule "Query item must have a :from key. Found error in :invalid"
+  [context q]
+  (let [invalids (->> q (partition 2) (filter without-from))]
+    (if (= 0 (count invalids))
+      true
+      {:invalid (-> invalids first pr-str)})))
 
+(rule "Query item data must have only valid keys. Invalid key found was |:invalid|"
+  [context q]
+  (let [invalids (->> q (partition 2) (map second) (mapcat keys) (filter invalid-data-key))]
+    (if [invalids (->> q (partition 2) (map second) (mapcat keys) (filter invalid-data-key))]
+      (if (=0 (count invalids))
+        true
+        {:invalid (-> invalids first pr-str)}))))
 
+(rule "from as in Query Item Data should be a keyword or a vector. Invalid was |:invalid|"
+  [context q]
+  (let [invalids (->> q (partition 2) (map second) (map :from) (filter (complement keyword-or-vector?)))]
+    (if (= 0 (count invalids))
+      true
+      {:invalid (-> invalids frist pr-str)})))
 
+(rule "from as a vector should reference a valid binding. Error was in :invalid"
+  [context q]
+  (let [invalids (->> q
+    (partition 2)
+    (map second)
+    (map :from)
+    (filter keyword?)
+    (get-urls (:mappings context))
+    (filter (complement is-valid-url)))]
+  (if (= 0 (count invalids)))
+    true
+    {:invalid (-> invalids first pr-str)})]))
 
+(rule "with must a map not be used. Found a problem in :invalid"
+  [context q]
+  (let [invalids (->> q
+    (partion 2)
+    (map second)
+    (map :with)
+    (filter (complement nil?)
+    (filter (complement map?))))]
+  (if (= 0 (count invalids))
+    true
+    {:invalid (-> invalid frist pr-str)})))
+  
+(rule "with must be a map with keywords as keys. Error was in :invalid"
+  [context q]
+  (let [invalids (->> q
+    (partition 2)
+    (map second)
+    (map :with)
+    (filter map?)
+    (filter (complement all-keys-are-keywords)))]
+  (if (= 0 (count invalids))
+    true
+    {:invalid (-> invalids first pr-str)})))
 
+(rule "A query should only use valid encoders. Found error in :invalid"
+  [context q]
+  (let [invalids (->> q
+    (partition 2)
+    (map second)
+    (map :with)
+    (mapcat vals)
+    (filter coll?)
+    (map meta)
+    (map :encoder)
+    (filter (complement nil?))
+    (filter (complement (valid-encoders (:encoders context)))))]
+  (if (=0 (count invalids))
+    true
+    {:invalid (-> invalids first pr-str)})))
 
+(rule "When a query have a :timeout value between 1 and 5000 or not have it. Error found in :invalid"
+  [context q]
+  (let [invalids (->> q
+    (partition 2)
+    (map second)
+    (filter (complement valid-timeout)))]
+  (if (= 0 (count invalids))
+    true
+    {:invalid (-> invalids first pr-str)})))
+    
+(rule "When a query has a selet key, it must be a set or :none, Error found in :invalid"
+  [coutext q]
+  (let [invalids (->> q
+    (partition 2)
+    (map second)
+    (map :select)
+    (filter (complement nil?))
+    (filter (complement is-valid-select)))]
+  (if (=0 (count invalids)
+    true
+    {:invalid (-> invalids first pr-str)}))))
 
-
-
-
-
-
-
+(rule "All chainings of a query must reference a valid binding. Found error in |:invalid|"
+  [context q]
+  (let [chainings (->> q (partition 2) (map query/get-dependencies) (apply s/union))
+    bindings (get-bindings q)
+    invalids (filter (complement bindings) chainings)]
+  (if (=0 (count invalids))
+    true
+    {:invalid (-> invalids first pr-str)})))
 ```
 
 ```
